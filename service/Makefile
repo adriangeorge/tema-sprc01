@@ -1,0 +1,21 @@
+# Compiler flags 
+CCPP = g++
+CFLAGS += -g -Wall
+LDLIBS += -lnsl
+RPCGENFLAGS = 
+# Parameters
+EXE = server 
+SRC.cpp = ./src/xdr.cpp ./src/server_stub.cpp ./src/sample_server.cpp 
+OBJ = $(SRC.cpp:%.cpp=%.o)
+
+# Targets 
+all : $(EXE)
+
+$(OBJ) : $(SRC.cpp) 
+
+$(EXE) : $(OBJ) 
+	$(CCPP) -o $(EXE) $(OBJ) $(LDLIBS)
+
+ clean:
+	 $(RM) $(OBJ) $(EXE)
+
