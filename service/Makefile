@@ -5,7 +5,7 @@ LDLIBS += -lnsl
 RPCGENFLAGS = 
 # Parameters
 EXE = server 
-SRC.cpp = ./src/xdr.cpp ./src/server_stub.cpp ./src/sample_server.cpp 
+SRC.cpp = ./src/xdr.cpp ./src/server_stub.cpp ./src/server.cpp 
 OBJ = $(SRC.cpp:%.cpp=%.o)
 
 # Targets 

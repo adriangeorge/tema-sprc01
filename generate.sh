@@ -16,10 +16,7 @@ CLNT=${PATH_CLIENT}${STUB_CLIENT}
 SERV=${PATH_SERVER}${STUB_SERVER}
 
 # Remove old files
-rm  ${CLNT} ${SERV} ${INTF_H} ${PATH_CLIENT}xdr.cpp \
-    ${PATH_SERVER}xdr.cpp ${PATH_CLIENT}sample_client.cpp \
-    ${PATH_SERVER}sample_server.cpp ${PATH_CLIENT}${RPC_HEADER} \
-    ${PATH_SERVER}${RPC_HEADER} 2> /dev/null
+./clean.sh
 
 # Break down generation in steps
 # Stubs
@@ -31,8 +28,8 @@ rpcgen -C -h ${INTF_X} -o ${PATH_CLIENT}${RPC_HEADER}
 rpcgen -C -h ${INTF_X} -o ${PATH_SERVER}${RPC_HEADER}
 
 # Samples
-rpcgen -C -Sc ${INTF_X} -o ${PATH_CLIENT}sample_client.cpp
-rpcgen -C -Ss ${INTF_X} -o ${PATH_SERVER}sample_server.cpp
+rpcgen -C -Sc ${INTF_X} -o ${PATH_CLIENT}client.cpp
+rpcgen -C -Ss ${INTF_X} -o ${PATH_SERVER}server.cpp
 
 # xdr
 rpcgen -C -c ${INTF_X} -o ${PATH_CLIENT}xdr.cpp
