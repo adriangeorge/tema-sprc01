@@ -6,8 +6,24 @@
 #ifndef __SERVER__
 #define __SERVER__
 
-enum { READ = 1, MODIFY = 2, DELETE = 4, INSERT = 8, EXECUTE = 16 } perm_flag;
-
+enum perm_flag {
+	NONE = 0,
+	READ = 1,
+	MODIFY = 2,
+	DELETE = 4,
+	INSERT = 8,
+	EXECUTE = 16
+};
+enum status_code {
+	OK,
+	USER_NOT_FOUND,
+	REQUEST_DENIED,
+	TOKEN_EXPIRED,
+	OPERATION_NOT_PERMITTED,
+	RESOURCE_NOT_FOUND,
+	PERMISSION_DENIED,
+	PERMISSION_GRANTED
+};
 // Database structures
 struct user {
 	std::string curr_token;

@@ -7,11 +7,108 @@
 #include "interface.h"
 #include <fstream>
 #include <iostream>
+#include <map>
 #include <sstream>
 #include <string>
 
+enum status_code {
+	OK,
+	USER_NOT_FOUND,
+	REQUEST_DENIED,
+	TOKEN_EXPIRED,
+	OPERATION_NOT_PERMITTED,
+	RESOURCE_NOT_FOUND,
+	PERMISSION_DENIED,
+	PERMISSION_GRANTED
+};
+
+std::string status_code_str[] = {
+    "SUCCESS",		 "USER_NOT_FOUND",	    "REQUEST_DENIED",
+    "TOKEN_EXPIRED",	 "OPERATION_NOT_PERMITTED", "RESOURCE_NOT_FOUND",
+    "PERMISSION_DENIED", "PERMISSION_GRANTED"};
+
+struct token_cl {
+	int ttl;
+	std::string token_request;
+	std::string token_access;
+	std::string token_refresh;
+};
+
+std::map<std::string, token_cl> user_db;
 std::string curr_token;
+int curr_token_ttl;
 std::string input_file;
+
+void execute_token_op(std::string user_id, std::string op_type, int arg,
+		      CLIENT **clnt)
+{
+	server_res_token *res;
+	if (user_db.at(user_id).token_request == "N/A") {
+		// Get initial request token
+		client_req_auth req;
+		req.c_id = (char *)user_id.c_str();
+		res = req_auth_1(&req, *clnt);
+
+		// Error checking
+		if (res == (server_res_token *)NULL) {
+			printf("%d :", __LINE__);
+			clnt_perror(*clnt, "call failed");
+		} else if (res->status != SUCCESS) {
+			std::cout << status_code_str[res->status] << std::endl;
+			return;
+		}
+	} else {
+		// Populate request body
+		client_req_access req;
+		req.c_id = (char *)user_id.c_str();
+		req.approve_token = (char *)user_db.at(user_id).token_access.c_str();
+
+		// Send request
+		if (arg)
+			res = req_bearer_token_refresh_1(&req, *clnt);
+		else
+			res = req_bearer_token_1(&req, *clnt);
+
+		if (res == (server_res_token *)NULL) {
+			printf("%d :", __LINE__);
+			clnt_perror(*clnt, "call failed");
+		} else if (res->status != SUCCESS) {
+			std::cout << status_code_str[res->status] << std::endl;
+			return;
+		}
+	}
+
+	// Get signed access token
+	client_req_approve req_approve;
+	req_approve.approve_token = res->token;
+
+	res = approve_req_token_1(&req_approve, *clnt);
+	if (res == (server_res_token *)NULL) {
+		printf("%d :", __LINE__);
+		clnt_perror(*clnt, "call failed");
+	}
+	// Check if permissions were granted
+	if (res->status != SUCCESS) {
+		std::cout << status_code_str[res->status] << std::endl;
+		return;
+	} else {
+		std::cout << user_db.at(user_id).token_request << " -> "
+			  << user_db.at(user_id).token_access << std::endl;
+	}
+}
+void execute_resource_op(std::string user_id, std::string op_type,
+			 std::string arg, CLIENT *clnt)
+{
+	std::cout << "Res op\n";
+	server_res_op *res;
+	client_req_op validate_delegated_action_1_arg;
+
+	res =
+	    validate_delegated_action_1(&validate_delegated_action_1_arg, clnt);
+	if (res == (server_res_op *)NULL) {
+		clnt_perror(clnt, "call failed");
+	}
+}
 void sprc_hw_1(char *host)
 {
 	CLIENT *clnt;
@@ -23,6 +120,7 @@ void sprc_hw_1(char *host)
 
 	std::ifstream req_file(input_file);
 
+	// Process all requests in file
 	std::string in_line;
 	while (req_file >> in_line) {
 		std::stringstream s(in_line);
@@ -34,51 +132,28 @@ void sprc_hw_1(char *host)
 		std::cout << user_id << " " << operation_type << " "
 			  << operation_arg << std::endl;
 
-        if(operation_type == "REQUEST") {
+		// Check if user exists in users db
+		if (!user_db.count(user_id)) {
+			token_cl new_token;
+			new_token.ttl = 0;
+			new_token.token_access = "N/A";
+			new_token.token_refresh = "N/A";
+			new_token.token_request = "N/A";
 
-        } else {
-            
-        }
+			user_db.insert(std::pair<std::string, token_cl>(
+			    user_id, new_token));
+		}
+
+		// Check operation type
+		if (operation_type == "REQUEST") {
+			execute_token_op(user_id, operation_type,
+					 atoi(operation_arg.c_str()), &clnt);
+		} else {
+			execute_resource_op(user_id, operation_type,
+					    operation_arg, clnt);
+		}
 	}
 	req_file.close();
-	return;
-	server_res_token *result_1;
-	client_req_auth req_auth_1_arg;
-
-	server_res_token *result_2;
-	client_req_approve approve_req_token_1_arg;
-
-	server_res_token *result_3;
-	client_req_access req_bearer_token_1_arg;
-
-	server_res_token *result_4;
-	client_req_access req_bearer_token_refresh_1_arg;
-
-	server_res_token *result_5;
-	client_req_op validate_delegated_action_1_arg;
-
-	result_1 = req_auth_1(&req_auth_1_arg, clnt);
-	if (result_1 == (server_res_token *)NULL) {
-		clnt_perror(clnt, "call failed");
-	}
-	result_2 = approve_req_token_1(&approve_req_token_1_arg, clnt);
-	if (result_2 == (server_res_token *)NULL) {
-		clnt_perror(clnt, "call failed");
-	}
-	result_3 = req_bearer_token_1(&req_bearer_token_1_arg, clnt);
-	if (result_3 == (server_res_token *)NULL) {
-		clnt_perror(clnt, "call failed");
-	}
-	result_4 =
-	    req_bearer_token_refresh_1(&req_bearer_token_refresh_1_arg, clnt);
-	if (result_4 == (server_res_token *)NULL) {
-		clnt_perror(clnt, "call failed");
-	}
-	result_5 =
-	    validate_delegated_action_1(&validate_delegated_action_1_arg, clnt);
-	if (result_5 == (server_res_token *)NULL) {
-		clnt_perror(clnt, "call failed");
-	}
 
 	clnt_destroy(clnt);
 }

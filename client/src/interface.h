@@ -73,8 +73,8 @@ extern  server_res_token * req_bearer_token_1_svc(client_req_access *, struct sv
 extern  server_res_token * req_bearer_token_refresh_1(client_req_access *, CLIENT *);
 extern  server_res_token * req_bearer_token_refresh_1_svc(client_req_access *, struct svc_req *);
 #define validate_delegated_action 5
-extern  server_res_token * validate_delegated_action_1(client_req_op *, CLIENT *);
-extern  server_res_token * validate_delegated_action_1_svc(client_req_op *, struct svc_req *);
+extern  server_res_op * validate_delegated_action_1(client_req_op *, CLIENT *);
+extern  server_res_op * validate_delegated_action_1_svc(client_req_op *, struct svc_req *);
 extern int sprc_hw_1_freeresult (SVCXPRT *, xdrproc_t, caddr_t);
 
 #else /* K&R C */
@@ -91,8 +91,8 @@ extern  server_res_token * req_bearer_token_1_svc();
 extern  server_res_token * req_bearer_token_refresh_1();
 extern  server_res_token * req_bearer_token_refresh_1_svc();
 #define validate_delegated_action 5
-extern  server_res_token * validate_delegated_action_1();
-extern  server_res_token * validate_delegated_action_1_svc();
+extern  server_res_op * validate_delegated_action_1();
+extern  server_res_op * validate_delegated_action_1_svc();
 extern int sprc_hw_1_freeresult ();
 #endif /* K&R C */
 

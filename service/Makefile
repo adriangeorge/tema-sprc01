@@ -1,8 +1,7 @@
 # Compiler flags 
 CCPP = g++
-CFLAGS += -g -Wall
+CXXFLAGS = -g -Wall
 LDLIBS += -lnsl
-RPCGENFLAGS = 
 # Parameters
 EXE = server 
 SRC.cpp = ./src/xdr.cpp ./src/server_stub.cpp ./src/server.cpp 

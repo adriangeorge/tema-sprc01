@@ -5,20 +5,19 @@
 
 #include "interface.h"
 #include "server.h"
+#include <memory.h>
+#include <netinet/in.h>
+#include <rpc/pmap_clnt.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <rpc/pmap_clnt.h>
 #include <string.h>
-#include <memory.h>
 #include <sys/socket.h>
-#include <netinet/in.h>
-#include <iostream>
+
 #ifndef SIG_PF
-#define SIG_PF void(*)(int)
+#define SIG_PF void (*)(int)
 #endif
 
-static void
-sprc_hw_1(struct svc_req *rqstp, register SVCXPRT *transp)
+static void sprc_hw_1(struct svc_req *rqstp, register SVCXPRT *transp)
 {
 	union {
 		client_req_auth req_auth_1_arg;
@@ -33,80 +32,87 @@ sprc_hw_1(struct svc_req *rqstp, register SVCXPRT *transp)
 
 	switch (rqstp->rq_proc) {
 	case NULLPROC:
-		(void) svc_sendreply (transp, (xdrproc_t) xdr_void, (char *)NULL);
+		(void)svc_sendreply(transp, (xdrproc_t)xdr_void, (char *)NULL);
 		return;
 
 	case req_auth:
-		_xdr_argument = (xdrproc_t) xdr_client_req_auth;
-		_xdr_result = (xdrproc_t) xdr_server_res_token;
-		local = (char *(*)(char *, struct svc_req *)) req_auth_1_svc;
+		_xdr_argument = (xdrproc_t)xdr_client_req_auth;
+		_xdr_result = (xdrproc_t)xdr_server_res_token;
+		local = (char *(*)(char *, struct svc_req *))req_auth_1_svc;
 		break;
 
 	case approve_req_token:
-		_xdr_argument = (xdrproc_t) xdr_client_req_approve;
-		_xdr_result = (xdrproc_t) xdr_server_res_token;
-		local = (char *(*)(char *, struct svc_req *)) approve_req_token_1_svc;
+		_xdr_argument = (xdrproc_t)xdr_client_req_approve;
+		_xdr_result = (xdrproc_t)xdr_server_res_token;
+		local = (char *(*)(char *,
+				   struct svc_req *))approve_req_token_1_svc;
 		break;
 
 	case req_bearer_token:
-		_xdr_argument = (xdrproc_t) xdr_client_req_access;
-		_xdr_result = (xdrproc_t) xdr_server_res_token;
-		local = (char *(*)(char *, struct svc_req *)) req_bearer_token_1_svc;
+		_xdr_argument = (xdrproc_t)xdr_client_req_access;
+		_xdr_result = (xdrproc_t)xdr_server_res_token;
+		local =
+		    (char *(*)(char *, struct svc_req *))req_bearer_token_1_svc;
 		break;
 
 	case req_bearer_token_refresh:
-		_xdr_argument = (xdrproc_t) xdr_client_req_access;
-		_xdr_result = (xdrproc_t) xdr_server_res_token;
-		local = (char *(*)(char *, struct svc_req *)) req_bearer_token_refresh_1_svc;
+		_xdr_argument = (xdrproc_t)xdr_client_req_access;
+		_xdr_result = (xdrproc_t)xdr_server_res_token;
+		local =
+		    (char *(*)(char *,
+			       struct svc_req *))req_bearer_token_refresh_1_svc;
 		break;
 
 	case validate_delegated_action:
-		_xdr_argument = (xdrproc_t) xdr_client_req_op;
-		_xdr_result = (xdrproc_t) xdr_server_res_token;
-		local = (char *(*)(char *, struct svc_req *)) validate_delegated_action_1_svc;
+		_xdr_argument = (xdrproc_t)xdr_client_req_op;
+		_xdr_result = (xdrproc_t)xdr_server_res_op;
+		local = (char *(*)(char *, struct svc_req *))
+		    validate_delegated_action_1_svc;
 		break;
 
 	default:
-		svcerr_noproc (transp);
+		svcerr_noproc(transp);
 		return;
 	}
-	memset ((char *)&argument, 0, sizeof (argument));
-	if (!svc_getargs (transp, (xdrproc_t) _xdr_argument, (caddr_t) &argument)) {
-		svcerr_decode (transp);
+	memset((char *)&argument, 0, sizeof(argument));
+	if (!svc_getargs(transp, (xdrproc_t)_xdr_argument,
+			 (caddr_t)&argument)) {
+		svcerr_decode(transp);
 		return;
 	}
 	result = (*local)((char *)&argument, rqstp);
-	if (result != NULL && !svc_sendreply(transp, (xdrproc_t) _xdr_result, result)) {
-		svcerr_systemerr (transp);
+	if (result != NULL &&
+	    !svc_sendreply(transp, (xdrproc_t)_xdr_result, result)) {
+		svcerr_systemerr(transp);
 	}
-	if (!svc_freeargs (transp, (xdrproc_t) _xdr_argument, (caddr_t) &argument)) {
-		fprintf (stderr, "%s", "unable to free arguments");
-		exit (1);
+	if (!svc_freeargs(transp, (xdrproc_t)_xdr_argument,
+			  (caddr_t)&argument)) {
+		fprintf(stderr, "%s", "unable to free arguments");
+		exit(1);
 	}
 	return;
 }
 
-int
-main (int argc, char **argv)
+int main(int argc, char **argv)
 {
 	register SVCXPRT *transp;
 
-	pmap_unset (SPRC_HW, SPRC_HW_VER);
+	pmap_unset(SPRC_HW, SPRC_HW_VER);
 
 	transp = svcudp_create(RPC_ANYSOCK);
 	if (transp == NULL) {
-		fprintf (stderr, "%s", "cannot create udp service.");
+		fprintf(stderr, "%s", "cannot create udp service.");
 		exit(1);
 	}
-	if (!svc_register(transp, SPRC_HW, SPRC_HW_VER, sprc_hw_1, IPPROTO_UDP)) {
-		fprintf (stderr, "%s", "unable to register (SPRC_HW, SPRC_HW_VER, udp).");
+	if (!svc_register(transp, SPRC_HW, SPRC_HW_VER, sprc_hw_1,
+			  IPPROTO_UDP)) {
+		fprintf(stderr, "%s",
+			"unable to register (SPRC_HW, SPRC_HW_VER, udp).");
 		exit(1);
 	}
-
-    std::cout << "reading args \n";
-    server_init(argv[1], argv[2], argv[3], atoi(argv[4]));
-	svc_run ();
-	fprintf (stderr, "%s", "svc_run returned");
-	exit (1);
+	server_init(argv[1], argv[2], argv[3], atoi(argv[4]));
+	svc_run();
+	fprintf(stderr, "%s", "svc_run returned");
+	exit(1);
 	/* NOTREACHED */
 }

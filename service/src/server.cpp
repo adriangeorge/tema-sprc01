@@ -5,6 +5,7 @@
  */
 
 #include "server.h"
+#include "../../token.h"
 #include "interface.h"
 #include <fstream>
 #include <iostream>
@@ -17,7 +18,6 @@ std::vector<std::map<std::string, unsigned char>> user_approvals;
 int current_approval_index = 0;
 int token_availability = 0;
 
-#define __DEBUG__
 void server_init(std::string client_f, std::string resource_f,
 		 std::string approval_f, int avail)
 {
@@ -42,8 +42,6 @@ void server_init(std::string client_f, std::string resource_f,
 
 	client_file.close();
 
-	std::cout << std::endl;
-
 	// Read and store resource info
 	std::ifstream resource_file(resource_f);
 	int res_count;
@@ -59,7 +57,6 @@ void server_init(std::string client_f, std::string resource_f,
 	}
 
 	resource_file.close();
-	std::cout << std::endl;
 
 	// Read and store approval info
 #ifdef __DEBUG__
@@ -78,11 +75,8 @@ void server_init(std::string client_f, std::string resource_f,
 		while (getline(s, csv_res_name, ',')) {
 			// If no permissions are allowed no point in assigning
 			// to permission map
-			if (csv_res_name == "*") {
-				getline(s, csv_perm, ',');
-				continue;
-			}
-			unsigned char new_perm = 0;
+
+			unsigned char new_perm = NONE;
 			getline(s, csv_perm, ',');
 
 			// Search each permission type and perform binary OR
@@ -104,18 +98,17 @@ void server_init(std::string client_f, std::string resource_f,
 			    csv_res_name, new_perm);
 
 			new_approval.insert(perm_pair);
-
+#ifdef __DEBUG__
 			std::cout
 			    << "[" << csv_res_name << "] | ["
 			    << std::to_string(new_approval.at(csv_res_name))
 			    << "]" << std::endl;
+#endif
 		}
-
-		std::cout << std::endl;
 		user_approvals.push_back(new_approval);
 	}
 #ifdef __DEBUG__
-		std::cout << "[PermDB] Finished " << std::endl;
+	std::cout << "[PermDB] Finished " << std::endl;
 #endif
 
 	approval_file.close();
@@ -125,10 +118,25 @@ server_res_token *req_auth_1_svc(client_req_auth *argp, struct svc_req *rqstp)
 {
 	static server_res_token result;
 
-	/*
-	 * insert server code here
-	 */
+	memset(&result, 0, sizeof(server_res_token));
+	// Print begin message
+	std::cout << "BEGIN " << argp->c_id << " AUTHZ" << std::endl;
 
+	// Populate unneeded fields
+	result.ref_token = "N/A";
+	result.token_ttl = 0;
+
+	// Check if user in db
+	if (!user_db.count(argp->c_id)) {
+		result.status = status_code::USER_NOT_FOUND;
+		result.token = "N/A";
+		return &result;
+	}
+	// Generate auth token
+	// f(id_user)
+	result.token = generate_access_token(argp->c_id);
+	result.status = status_code::OK;
+	std::cout << "  RequestToken = " << result.token << std::endl;
 	return &result;
 }
 
@@ -136,11 +144,31 @@ server_res_token *approve_req_token_1_svc(client_req_approve *argp,
 					  struct svc_req *rqstp)
 {
 	static server_res_token result;
+	memset(&result, 0, sizeof(server_res_token));
 
-	/*
-	 * insert server code here
-	 */
+	// Grab permission set
+	auto approval = user_approvals.at(current_approval_index++);
+	if (current_approval_index >= user_approvals.size())
+		current_approval_index = 0;
 
+	// Check if end user allows any permissions for this resource
+	if (approval.count("*")) {
+		result.token_ttl = 0;
+		result.ref_token = "N/A";
+		result.status = status_code::REQUEST_DENIED;
+		result.token = "N/A";
+		return &result;
+	}
+
+	// Generate access token
+	// f(auth_token)
+	result.token = generate_access_token(argp->approve_token);
+	// Populate rest of response fields
+	result.ref_token = "N/A";
+	result.token_ttl = token_availability;
+	result.status = status_code::OK;
+
+	std::cout << "  AccessToken = " << result.token << std::endl;
 	return &result;
 }
 
@@ -148,11 +176,15 @@ server_res_token *req_bearer_token_1_svc(client_req_access *argp,
 					 struct svc_req *rqstp)
 {
 	static server_res_token result;
-
+	memset(&result, 0, sizeof(server_res_token));
 	/*
 	 * insert server code here
 	 */
-
+	result.token = generate_access_token(argp->approve_token);
+	// Populate rest of response fields
+	result.ref_token = "N/A";
+	result.token_ttl = token_availability;
+	result.status = status_code::OK;
 	return &result;
 }
 
@@ -160,19 +192,23 @@ server_res_token *req_bearer_token_refresh_1_svc(client_req_access *argp,
 						 struct svc_req *rqstp)
 {
 	static server_res_token result;
-
+	memset(&result, 0, sizeof(server_res_token));
 	/*
 	 * insert server code here
 	 */
-
+	result.token = generate_access_token(argp->approve_token);
+	// Populate rest of response fields
+	result.ref_token = "N/A";
+	result.token_ttl = token_availability;
+	result.status = status_code::OK;
 	return &result;
 }
 
-server_res_token *validate_delegated_action_1_svc(client_req_op *argp,
-						  struct svc_req *rqstp)
+server_res_op *validate_delegated_action_1_svc(client_req_op *argp,
+					       struct svc_req *rqstp)
 {
-	static server_res_token result;
-
+	static server_res_op result;
+	memset(&result, 0, sizeof(server_res_op));
 	/*
 	 * insert server code here
 	 */

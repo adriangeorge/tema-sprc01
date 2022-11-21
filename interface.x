@@ -26,17 +26,6 @@ struct client_req_access {
 
 /*
 -----------------------------------------------------------------------------
-client_req_approve
-    
-    approve_token       :   token of client returned by authz
------------------------------------------------------------------------------
-*/
-struct client_req_approve {
-    string approve_token<>;
-};
-
-/*
------------------------------------------------------------------------------
 client_req_bearer_token
     
     c_access_token      :   token of client returned by authz
@@ -45,7 +34,7 @@ client_req_bearer_token
 */
 struct client_req_bearer_token {
     string c_access_token<>;
-    string c_request_token<>;
+    string c_refresh_token<>;
 };
 
 /*
@@ -109,11 +98,11 @@ struct server_res_op {
 
 program SPRC_HW {
 	version SPRC_HW_VER {
-		server_res_token req_auth(client_req_auth)                    = 1;
-		server_res_token approve_req_token(client_req_approve)           = 2;
-		server_res_token req_bearer_token(client_req_access)            = 3;
-		server_res_token req_bearer_token_refresh(client_req_access)    = 4;
-		server_res_token validate_delegated_action(client_req_op)   = 5;
+		server_res_token    req_auth(client_req_auth)                       = 1;
+		server_res_token    approve_req_token(client_req_approve)           = 2;
+		server_res_token    req_bearer_token(client_req_bearer_token)             = 3;
+		server_res_token    req_bearer_token_refresh(client_req_bearer_token)     = 4;
+		server_res_op       validate_delegated_action(client_req_op)        = 5;
 
 	} = 1;
 } = 123456789;

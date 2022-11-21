@@ -69,15 +69,15 @@ req_bearer_token_refresh_1(client_req_access *argp, CLIENT *clnt)
 	return (&clnt_res);
 }
 
-server_res_token *
+server_res_op *
 validate_delegated_action_1(client_req_op *argp, CLIENT *clnt)
 {
-	static server_res_token clnt_res;
+	static server_res_op clnt_res;
 
 	memset((char *)&clnt_res, 0, sizeof(clnt_res));
 	if (clnt_call (clnt, validate_delegated_action,
 		(xdrproc_t) xdr_client_req_op, (caddr_t) argp,
-		(xdrproc_t) xdr_server_res_token, (caddr_t) &clnt_res,
+		(xdrproc_t) xdr_server_res_op, (caddr_t) &clnt_res,
 		TIMEOUT) != RPC_SUCCESS) {
 		return (NULL);
 	}
