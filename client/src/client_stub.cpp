@@ -25,13 +25,13 @@ req_auth_1(client_req_auth *argp, CLIENT *clnt)
 }
 
 server_res_token *
-approve_req_token_1(client_req_approve *argp, CLIENT *clnt)
+approve_req_token_1(client_req_signature *argp, CLIENT *clnt)
 {
 	static server_res_token clnt_res;
 
 	memset((char *)&clnt_res, 0, sizeof(clnt_res));
 	if (clnt_call (clnt, approve_req_token,
-		(xdrproc_t) xdr_client_req_approve, (caddr_t) argp,
+		(xdrproc_t) xdr_client_req_signature, (caddr_t) argp,
 		(xdrproc_t) xdr_server_res_token, (caddr_t) &clnt_res,
 		TIMEOUT) != RPC_SUCCESS) {
 		return (NULL);
@@ -40,13 +40,13 @@ approve_req_token_1(client_req_approve *argp, CLIENT *clnt)
 }
 
 server_res_token *
-req_bearer_token_1(client_req_access *argp, CLIENT *clnt)
+req_bearer_token_1(client_req_bearer_token *argp, CLIENT *clnt)
 {
 	static server_res_token clnt_res;
 
 	memset((char *)&clnt_res, 0, sizeof(clnt_res));
 	if (clnt_call (clnt, req_bearer_token,
-		(xdrproc_t) xdr_client_req_access, (caddr_t) argp,
+		(xdrproc_t) xdr_client_req_bearer_token, (caddr_t) argp,
 		(xdrproc_t) xdr_server_res_token, (caddr_t) &clnt_res,
 		TIMEOUT) != RPC_SUCCESS) {
 		return (NULL);
@@ -55,13 +55,13 @@ req_bearer_token_1(client_req_access *argp, CLIENT *clnt)
 }
 
 server_res_token *
-req_bearer_token_refresh_1(client_req_access *argp, CLIENT *clnt)
+req_bearer_token_refresh_1(client_req_bearer_token *argp, CLIENT *clnt)
 {
 	static server_res_token clnt_res;
 
 	memset((char *)&clnt_res, 0, sizeof(clnt_res));
 	if (clnt_call (clnt, req_bearer_token_refresh,
-		(xdrproc_t) xdr_client_req_access, (caddr_t) argp,
+		(xdrproc_t) xdr_client_req_bearer_token, (caddr_t) argp,
 		(xdrproc_t) xdr_server_res_token, (caddr_t) &clnt_res,
 		TIMEOUT) != RPC_SUCCESS) {
 		return (NULL);

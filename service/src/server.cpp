@@ -140,7 +140,7 @@ server_res_token *req_auth_1_svc(client_req_auth *argp, struct svc_req *rqstp)
 	return &result;
 }
 
-server_res_token *approve_req_token_1_svc(client_req_approve *argp,
+server_res_token *approve_req_token_1_svc(client_req_signature *argp,
 					  struct svc_req *rqstp)
 {
 	static server_res_token result;
@@ -156,51 +156,61 @@ server_res_token *approve_req_token_1_svc(client_req_approve *argp,
 		result.token_ttl = 0;
 		result.ref_token = "N/A";
 		result.status = status_code::REQUEST_DENIED;
-		result.token = "N/A";
+		result.token = argp->request_token;
 		return &result;
 	}
 
-	// Generate access token
-	// f(auth_token)
-	result.token = generate_access_token(argp->approve_token);
+	// Sign token
+	std::string signed_tk(argp->request_token);
+	signed_tk += "_signature";
+	result.token = (char *)malloc(sizeof(char) * signed_tk.length());
+	strcpy(result.token, signed_tk.c_str());
+
 	// Populate rest of response fields
 	result.ref_token = "N/A";
-	result.token_ttl = token_availability;
+	result.token_ttl = 0;
 	result.status = status_code::OK;
 
-	std::cout << "  AccessToken = " << result.token << std::endl;
 	return &result;
 }
 
-server_res_token *req_bearer_token_1_svc(client_req_access *argp,
+server_res_token *req_bearer_token_1_svc(client_req_bearer_token *argp,
 					 struct svc_req *rqstp)
 {
 	static server_res_token result;
 	memset(&result, 0, sizeof(server_res_token));
-	/*
-	 * insert server code here
-	 */
-	result.token = generate_access_token(argp->approve_token);
+
+	std::string signed_tk(argp->c_auth_token);
+
 	// Populate rest of response fields
+	result.token = generate_access_token(
+	    (char *)signed_tk.substr(0, TOKEN_LEN).c_str());
+
 	result.ref_token = "N/A";
 	result.token_ttl = token_availability;
 	result.status = status_code::OK;
+	std::cout << "  AccessToken = " << result.token << std::endl;
 	return &result;
 }
 
-server_res_token *req_bearer_token_refresh_1_svc(client_req_access *argp,
+server_res_token *req_bearer_token_refresh_1_svc(client_req_bearer_token *argp,
 						 struct svc_req *rqstp)
 {
 	static server_res_token result;
 	memset(&result, 0, sizeof(server_res_token));
-	/*
-	 * insert server code here
-	 */
-	result.token = generate_access_token(argp->approve_token);
+
+	std::string signed_tk(argp->c_auth_token);
+
+	// Generate access token using signed auth token
+	result.token = generate_access_token(
+	    (char *)signed_tk.substr(0, TOKEN_LEN).c_str());
+	// Generate refresh token using access token
+	result.ref_token = generate_access_token(result.token);
+
 	// Populate rest of response fields
-	result.ref_token = "N/A";
 	result.token_ttl = token_availability;
 	result.status = status_code::OK;
+	std::cout << "  AccessToken = " << result.token << std::endl;
 	return &result;
 }
 
@@ -212,6 +222,7 @@ server_res_op *validate_delegated_action_1_svc(client_req_op *argp,
 	/*
 	 * insert server code here
 	 */
-
+    
+    result.status = status_code::OK;
 	return &result;
 }

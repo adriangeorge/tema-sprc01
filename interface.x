@@ -14,14 +14,13 @@ struct client_req_auth {
 
 /*
 -----------------------------------------------------------------------------
-client_req_access
-    c_id                :   id of client
-    access_token        :   access token approved by end user
+client_req_signature
+    
+    request_token       :   token returned by authz
 -----------------------------------------------------------------------------
 */
-struct client_req_access {
-    string c_id<>;
-    string approve_token<>;
+struct client_req_signature {
+    string request_token<>;
 };
 
 /*
@@ -33,7 +32,7 @@ client_req_bearer_token
 -----------------------------------------------------------------------------
 */
 struct client_req_bearer_token {
-    string c_access_token<>;
+    string c_auth_token<>;
     string c_refresh_token<>;
 };
 
@@ -98,11 +97,16 @@ struct server_res_op {
 
 program SPRC_HW {
 	version SPRC_HW_VER {
-		server_res_token    req_auth(client_req_auth)                       = 1;
-		server_res_token    approve_req_token(client_req_approve)           = 2;
-		server_res_token    req_bearer_token(client_req_bearer_token)             = 3;
-		server_res_token    req_bearer_token_refresh(client_req_bearer_token)     = 4;
-		server_res_op       validate_delegated_action(client_req_op)        = 5;
+        /* Send client id, get request token*/
+		server_res_token    req_auth(client_req_auth)                               = 1;
+		/* Send request token, get signed request token */
+        server_res_token    approve_req_token(client_req_signature)                   = 2;
+		/* Send signed request token, get access token */
+        server_res_token    req_bearer_token(client_req_bearer_token)               = 3;
+		/* Send signed request token, get access token and refresh token */
+        server_res_token    req_bearer_token_refresh(client_req_bearer_token)       = 4;
+		/* Send operation and access token, get operation result */
+        server_res_op       validate_delegated_action(client_req_op)                = 5;
 
 	} = 1;
 } = 123456789;

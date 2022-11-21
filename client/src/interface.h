@@ -8,31 +8,23 @@
 
 #include <rpc/rpc.h>
 
-
 #ifdef __cplusplus
 extern "C" {
 #endif
-
 
 struct client_req_auth {
 	char *c_id;
 };
 typedef struct client_req_auth client_req_auth;
 
-struct client_req_access {
-	char *c_id;
-	char *approve_token;
+struct client_req_signature {
+	char *request_token;
 };
-typedef struct client_req_access client_req_access;
-
-struct client_req_approve {
-	char *approve_token;
-};
-typedef struct client_req_approve client_req_approve;
+typedef struct client_req_signature client_req_signature;
 
 struct client_req_bearer_token {
-	char *c_access_token;
-	char *c_request_token;
+	char *c_auth_token;
+	char *c_refresh_token;
 };
 typedef struct client_req_bearer_token client_req_bearer_token;
 
@@ -61,60 +53,64 @@ typedef struct server_res_op server_res_op;
 
 #if defined(__STDC__) || defined(__cplusplus)
 #define req_auth 1
-extern  server_res_token * req_auth_1(client_req_auth *, CLIENT *);
-extern  server_res_token * req_auth_1_svc(client_req_auth *, struct svc_req *);
+extern server_res_token *req_auth_1(client_req_auth *, CLIENT *);
+extern server_res_token *req_auth_1_svc(client_req_auth *, struct svc_req *);
 #define approve_req_token 2
-extern  server_res_token * approve_req_token_1(client_req_approve *, CLIENT *);
-extern  server_res_token * approve_req_token_1_svc(client_req_approve *, struct svc_req *);
+extern server_res_token *approve_req_token_1(client_req_signature *, CLIENT *);
+extern server_res_token *approve_req_token_1_svc(client_req_signature *,
+						 struct svc_req *);
 #define req_bearer_token 3
-extern  server_res_token * req_bearer_token_1(client_req_access *, CLIENT *);
-extern  server_res_token * req_bearer_token_1_svc(client_req_access *, struct svc_req *);
+extern server_res_token *req_bearer_token_1(client_req_bearer_token *,
+					    CLIENT *);
+extern server_res_token *req_bearer_token_1_svc(client_req_bearer_token *,
+						struct svc_req *);
 #define req_bearer_token_refresh 4
-extern  server_res_token * req_bearer_token_refresh_1(client_req_access *, CLIENT *);
-extern  server_res_token * req_bearer_token_refresh_1_svc(client_req_access *, struct svc_req *);
+extern server_res_token *req_bearer_token_refresh_1(client_req_bearer_token *,
+						    CLIENT *);
+extern server_res_token *
+req_bearer_token_refresh_1_svc(client_req_bearer_token *, struct svc_req *);
 #define validate_delegated_action 5
-extern  server_res_op * validate_delegated_action_1(client_req_op *, CLIENT *);
-extern  server_res_op * validate_delegated_action_1_svc(client_req_op *, struct svc_req *);
-extern int sprc_hw_1_freeresult (SVCXPRT *, xdrproc_t, caddr_t);
+extern server_res_op *validate_delegated_action_1(client_req_op *, CLIENT *);
+extern server_res_op *validate_delegated_action_1_svc(client_req_op *,
+						      struct svc_req *);
+extern int sprc_hw_1_freeresult(SVCXPRT *, xdrproc_t, caddr_t);
 
 #else /* K&R C */
 #define req_auth 1
-extern  server_res_token * req_auth_1();
-extern  server_res_token * req_auth_1_svc();
+extern server_res_token *req_auth_1();
+extern server_res_token *req_auth_1_svc();
 #define approve_req_token 2
-extern  server_res_token * approve_req_token_1();
-extern  server_res_token * approve_req_token_1_svc();
+extern server_res_token *approve_req_token_1();
+extern server_res_token *approve_req_token_1_svc();
 #define req_bearer_token 3
-extern  server_res_token * req_bearer_token_1();
-extern  server_res_token * req_bearer_token_1_svc();
+extern server_res_token *req_bearer_token_1();
+extern server_res_token *req_bearer_token_1_svc();
 #define req_bearer_token_refresh 4
-extern  server_res_token * req_bearer_token_refresh_1();
-extern  server_res_token * req_bearer_token_refresh_1_svc();
+extern server_res_token *req_bearer_token_refresh_1();
+extern server_res_token *req_bearer_token_refresh_1_svc();
 #define validate_delegated_action 5
-extern  server_res_op * validate_delegated_action_1();
-extern  server_res_op * validate_delegated_action_1_svc();
-extern int sprc_hw_1_freeresult ();
+extern server_res_op *validate_delegated_action_1();
+extern server_res_op *validate_delegated_action_1_svc();
+extern int sprc_hw_1_freeresult();
 #endif /* K&R C */
 
 /* the xdr functions */
 
 #if defined(__STDC__) || defined(__cplusplus)
-extern  bool_t xdr_client_req_auth (XDR *, client_req_auth*);
-extern  bool_t xdr_client_req_access (XDR *, client_req_access*);
-extern  bool_t xdr_client_req_approve (XDR *, client_req_approve*);
-extern  bool_t xdr_client_req_bearer_token (XDR *, client_req_bearer_token*);
-extern  bool_t xdr_client_req_op (XDR *, client_req_op*);
-extern  bool_t xdr_server_res_token (XDR *, server_res_token*);
-extern  bool_t xdr_server_res_op (XDR *, server_res_op*);
+extern bool_t xdr_client_req_auth(XDR *, client_req_auth *);
+extern bool_t xdr_client_req_signature(XDR *, client_req_signature *);
+extern bool_t xdr_client_req_bearer_token(XDR *, client_req_bearer_token *);
+extern bool_t xdr_client_req_op(XDR *, client_req_op *);
+extern bool_t xdr_server_res_token(XDR *, server_res_token *);
+extern bool_t xdr_server_res_op(XDR *, server_res_op *);
 
 #else /* K&R C */
-extern bool_t xdr_client_req_auth ();
-extern bool_t xdr_client_req_access ();
-extern bool_t xdr_client_req_approve ();
-extern bool_t xdr_client_req_bearer_token ();
-extern bool_t xdr_client_req_op ();
-extern bool_t xdr_server_res_token ();
-extern bool_t xdr_server_res_op ();
+extern bool_t xdr_client_req_auth();
+extern bool_t xdr_client_req_signature();
+extern bool_t xdr_client_req_bearer_token();
+extern bool_t xdr_client_req_op();
+extern bool_t xdr_server_res_token();
+extern bool_t xdr_server_res_op();
 
 #endif /* K&R C */
 

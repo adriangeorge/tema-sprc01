@@ -39,65 +39,89 @@ std::string curr_token;
 int curr_token_ttl;
 std::string input_file;
 
-void execute_token_op(std::string user_id, std::string op_type, int arg,
-		      CLIENT **clnt)
+CLIENT *clnt;
+
+void bearer_authorization(std::string user_id, int arg)
 {
 	server_res_token *res;
-	if (user_db.at(user_id).token_request == "N/A") {
-		// Get initial request token
-		client_req_auth req;
-		req.c_id = (char *)user_id.c_str();
-		res = req_auth_1(&req, *clnt);
+	// Populate request body
+	client_req_bearer_token req;
+	req.c_auth_token = (char *)user_db.at(user_id).token_request.c_str();
+	req.c_refresh_token = (char *)user_db.at(user_id).token_refresh.c_str();
 
-		// Error checking
-		if (res == (server_res_token *)NULL) {
-			printf("%d :", __LINE__);
-			clnt_perror(*clnt, "call failed");
-		} else if (res->status != SUCCESS) {
-			std::cout << status_code_str[res->status] << std::endl;
-			return;
-		}
+	// Send request
+
+	if (arg) {
+		// std::cout << "Send signed req_tk get acc_tk, ref_tk\n";
+		res = req_bearer_token_refresh_1(&req, clnt);
 	} else {
-		// Populate request body
-		client_req_access req;
-		req.c_id = (char *)user_id.c_str();
-		req.approve_token = (char *)user_db.at(user_id).token_access.c_str();
-
-		// Send request
-		if (arg)
-			res = req_bearer_token_refresh_1(&req, *clnt);
-		else
-			res = req_bearer_token_1(&req, *clnt);
-
-		if (res == (server_res_token *)NULL) {
-			printf("%d :", __LINE__);
-			clnt_perror(*clnt, "call failed");
-		} else if (res->status != SUCCESS) {
-			std::cout << status_code_str[res->status] << std::endl;
-			return;
-		}
+		// std::cout << "Send signed req_tk get acc_tk\n";
+		res = req_bearer_token_1(&req, clnt);
 	}
 
-	// Get signed access token
-	client_req_approve req_approve;
-	req_approve.approve_token = res->token;
-
-	res = approve_req_token_1(&req_approve, *clnt);
 	if (res == (server_res_token *)NULL) {
 		printf("%d :", __LINE__);
-		clnt_perror(*clnt, "call failed");
-	}
-	// Check if permissions were granted
-	if (res->status != SUCCESS) {
+		clnt_perror(clnt, "call failed");
+	} else if (res->status != status_code::OK) {
 		std::cout << status_code_str[res->status] << std::endl;
 		return;
 	} else {
-		std::cout << user_db.at(user_id).token_request << " -> "
-			  << user_db.at(user_id).token_access << std::endl;
+		user_db.at(user_id).ttl = res->token_ttl;
+		user_db.at(user_id).token_access = res->token;
+		if (arg)
+			user_db.at(user_id).token_refresh = res->ref_token;
 	}
 }
+
+void authorization(std::string user_id, int arg)
+{
+	server_res_token *res;
+	// Get initial request token
+	client_req_auth req;
+	req.c_id = (char *)user_id.c_str();
+	// std::cout << "Send cid get req_tk\n";
+	res = req_auth_1(&req, clnt);
+
+	// Error checking
+	if (res == (server_res_token *)NULL) {
+		printf("%d :", __LINE__);
+		clnt_perror(clnt, "call failed");
+	} else if (res->status != status_code::OK) {
+		std::cout << status_code_str[res->status] << std::endl;
+		return;
+	}
+
+	// Get signed request token
+	client_req_signature req_approve;
+	req_approve.request_token = res->token;
+	// std::cout << "Send reqtk get signed reqtk\n";
+	res = approve_req_token_1(&req_approve, clnt);
+	if (res == (server_res_token *)NULL) {
+		printf("%d :", __LINE__);
+		clnt_perror(clnt, "call failed");
+	}
+	// Check if permissions were granted
+	if (res->status != status_code::OK) {
+		std::cout << status_code_str[res->status] << std::endl;
+		return;
+	} else {
+		user_db.at(user_id).token_request = res->token;
+	}
+
+	// Get access token
+	bearer_authorization(user_id, arg);
+
+	std::cout << user_db.at(user_id).token_request.substr(0, 15) << " -> "
+		  << user_db.at(user_id).token_access;
+
+	if (arg)
+		std::cout << "," << user_db.at(user_id).token_refresh;
+
+	std::cout << std::endl;
+}
+
 void execute_resource_op(std::string user_id, std::string op_type,
-			 std::string arg, CLIENT *clnt)
+			 std::string arg)
 {
 	std::cout << "Res op\n";
 	server_res_op *res;
@@ -109,9 +133,10 @@ void execute_resource_op(std::string user_id, std::string op_type,
 		clnt_perror(clnt, "call failed");
 	}
 }
+
 void sprc_hw_1(char *host)
 {
-	CLIENT *clnt;
+
 	clnt = clnt_create(host, SPRC_HW, SPRC_HW_VER, "udp");
 	if (clnt == NULL) {
 		clnt_pcreateerror(host);
@@ -146,11 +171,10 @@ void sprc_hw_1(char *host)
 
 		// Check operation type
 		if (operation_type == "REQUEST") {
-			execute_token_op(user_id, operation_type,
-					 atoi(operation_arg.c_str()), &clnt);
+			authorization(user_id, atoi(operation_arg.c_str()));
 		} else {
-			execute_resource_op(user_id, operation_type,
-					    operation_arg, clnt);
+			// execute_resource_op(user_id, operation_type,
+			// 		    operation_arg);
 		}
 	}
 	req_file.close();
