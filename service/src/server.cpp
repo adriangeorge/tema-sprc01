@@ -11,48 +11,67 @@
 #include <iostream>
 #include <sstream>
 
-std::map<std::string, user> user_db;
-std::map<std::string, token> token_db;
-std::set<std::string> resource_db;
-std::vector<std::map<std::string, unsigned char>> user_approvals;
+using namespace std;
+
+map<string, user> user_db;
+map<string, token> token_db;
+map<string, string> access_token_db;
+set<string> resource_db;
+
+vector<map<string, unsigned char>> user_approvals;
 int current_approval_index = 0;
 int token_availability = 0;
 
-void server_init(std::string client_f, std::string resource_f,
-		 std::string approval_f, int avail)
+char *sign_tk(char *tk)
+{
+	char *stk = (char *)malloc(sizeof(char) * 32);
+	memset(stk, 0, 32);
+	strcat(stk, tk);
+	strcat(stk, "C31M41C14r3NUN7");
+	return stk;
+}
+char *unsign_tk(char *tk)
+{
+	char *ustk = (char *)malloc(sizeof(char) * TOKEN_LEN);
+	memset(ustk, 0, TOKEN_LEN);
+	memcpy(ustk, tk, TOKEN_LEN);
+	return ustk;
+}
+void server_init(string client_f, string resource_f, string approval_f,
+		 int avail)
 {
 	// Set token availabilty
 	token_availability = avail;
 	// Read and store client info
-	std::ifstream client_file(client_f);
+	ifstream client_file(client_f);
 
 	int client_count;
 	client_file >> client_count;
-	std::string user_id;
+	string user_id;
 	while (client_file >> user_id) {
 		user new_user;
-		new_user.curr_token = "N/A";
-		user_db.insert(std::pair<std::string, user>(user_id, new_user));
+		new_user.acc_token = "N/A";
+		user_db.insert(pair<string, user>(user_id, new_user));
 
 #ifdef __DEBUG__
-		std::cout << "[UserDB] Inserted " << user_id << " with token "
-			  << user_db.at(user_id).curr_token << std::endl;
+		cout << "[UserDB] Inserted " << user_id << " with token "
+		     << user_db.at(user_id).curr_token << endl;
 #endif
 	}
 
 	client_file.close();
 
 	// Read and store resource info
-	std::ifstream resource_file(resource_f);
+	ifstream resource_file(resource_f);
 	int res_count;
 	resource_file >> res_count;
-	std::string res_name;
+	string res_name;
 	while (resource_file >> res_name) {
 		resource_db.insert(res_name);
 
 #ifdef __DEBUG__
-		std::cout << "[ResDB] Inserted "
-			  << *(resource_db.find(res_name)) << std::endl;
+		cout << "[ResDB] Inserted " << *(resource_db.find(res_name))
+		     << endl;
 #endif
 	}
 
@@ -60,15 +79,15 @@ void server_init(std::string client_f, std::string resource_f,
 
 	// Read and store approval info
 #ifdef __DEBUG__
-	std::cout << "[PermDB] Begin " << std::endl;
+	cout << "[PermDB] Begin " << endl;
 #endif
-	std::ifstream approval_file(approval_f);
-	std::string app_name;
+	ifstream approval_file(approval_f);
+	string app_name;
 	while (approval_file >> app_name) {
-		std::map<std::string, unsigned char> new_approval;
+		map<string, unsigned char> new_approval;
 
-		std::stringstream s(app_name);
-		std::string csv_res_name, csv_perm;
+		stringstream s(app_name);
+		string csv_res_name, csv_perm;
 
 		// For each specified permission grab a pair of
 		// (res_name, perm_str) And determine permission value
@@ -94,21 +113,20 @@ void server_init(std::string client_f, std::string resource_f,
 				}
 			}
 
-			auto perm_pair = std::pair<std::string, unsigned char>(
-			    csv_res_name, new_perm);
+			auto perm_pair =
+			    pair<string, unsigned char>(csv_res_name, new_perm);
 
 			new_approval.insert(perm_pair);
 #ifdef __DEBUG__
-			std::cout
-			    << "[" << csv_res_name << "] | ["
-			    << std::to_string(new_approval.at(csv_res_name))
-			    << "]" << std::endl;
+			cout << "[" << csv_res_name << "] | ["
+			     << to_string(new_approval.at(csv_res_name)) << "]"
+			     << endl;
 #endif
 		}
 		user_approvals.push_back(new_approval);
 	}
 #ifdef __DEBUG__
-	std::cout << "[PermDB] Finished " << std::endl;
+	cout << "[PermDB] Finished " << endl;
 #endif
 
 	approval_file.close();
@@ -120,7 +138,7 @@ server_res_token *req_auth_1_svc(client_req_auth *argp, struct svc_req *rqstp)
 
 	memset(&result, 0, sizeof(server_res_token));
 	// Print begin message
-	std::cout << "BEGIN " << argp->c_id << " AUTHZ" << std::endl;
+	cout << "BEGIN " << argp->c_id << " AUTHZ" << endl;
 
 	// Populate unneeded fields
 	result.ref_token = "N/A";
@@ -136,7 +154,7 @@ server_res_token *req_auth_1_svc(client_req_auth *argp, struct svc_req *rqstp)
 	// f(id_user)
 	result.token = generate_access_token(argp->c_id);
 	result.status = status_code::OK;
-	std::cout << "  RequestToken = " << result.token << std::endl;
+	cout << "  RequestToken = " << result.token << endl;
 	return &result;
 }
 
@@ -160,11 +178,14 @@ server_res_token *approve_req_token_1_svc(client_req_signature *argp,
 		return &result;
 	}
 
+	// Attach permissions to token
+	token new_tk;
+	new_tk.perms = approval;
+
+	token_db.insert({argp->request_token, new_tk});
+
 	// Sign token
-	std::string signed_tk(argp->request_token);
-	signed_tk += "_signature";
-	result.token = (char *)malloc(sizeof(char) * signed_tk.length());
-	strcpy(result.token, signed_tk.c_str());
+	result.token = sign_tk(argp->request_token);
 
 	// Populate rest of response fields
 	result.ref_token = "N/A";
@@ -180,7 +201,7 @@ server_res_token *req_bearer_token_1_svc(client_req_bearer_token *argp,
 	static server_res_token result;
 	memset(&result, 0, sizeof(server_res_token));
 
-	std::string signed_tk(argp->c_auth_token);
+	string signed_tk(argp->c_auth_token);
 
 	// Populate rest of response fields
 	result.token = generate_access_token(
@@ -189,7 +210,21 @@ server_res_token *req_bearer_token_1_svc(client_req_bearer_token *argp,
 	result.ref_token = "N/A";
 	result.token_ttl = token_availability;
 	result.status = status_code::OK;
-	std::cout << "  AccessToken = " << result.token << std::endl;
+
+	// Associate user_id with access token
+	access_token_db.insert({result.token, argp->c_id});
+
+	// Associate user_id with auth token
+	string unsigned_tk(unsign_tk(argp->c_auth_token));
+	token_db.at(unsigned_tk).user_id = argp->c_id;
+
+	// Update user token info
+	user_db.at(argp->c_id).acc_token = result.token;
+	user_db.at(argp->c_id).ref_token = "N/A";
+	user_db.at(argp->c_id).auth_token = unsigned_tk;
+	user_db.at(argp->c_id).token_ttl = result.token_ttl;
+
+	cout << "  AccessToken = " << result.token << endl;
 	return &result;
 }
 
@@ -199,18 +234,36 @@ server_res_token *req_bearer_token_refresh_1_svc(client_req_bearer_token *argp,
 	static server_res_token result;
 	memset(&result, 0, sizeof(server_res_token));
 
-	std::string signed_tk(argp->c_auth_token);
-
-	// Generate access token using signed auth token
-	result.token = generate_access_token(
-	    (char *)signed_tk.substr(0, TOKEN_LEN).c_str());
+	if (strcmp(argp->c_refresh_token, "N/A") != 0) {
+		// Generate access token based on automatic refesh token
+		result.token = generate_access_token(argp->c_refresh_token);
+	} else {
+		// Generate access token using signed auth token
+		result.token =
+		    generate_access_token(unsign_tk(argp->c_auth_token));
+	}
 	// Generate refresh token using access token
 	result.ref_token = generate_access_token(result.token);
 
 	// Populate rest of response fields
 	result.token_ttl = token_availability;
 	result.status = status_code::OK;
-	std::cout << "  AccessToken = " << result.token << std::endl;
+
+	// Associate user_id with access token
+	access_token_db.insert({result.token, argp->c_id});
+
+	// Associate user_id with auth token
+	string unsigned_tk(unsign_tk(argp->c_auth_token));
+	token_db.at(unsigned_tk).user_id = argp->c_id;
+
+	// Update user token info
+	user_db.at(argp->c_id).acc_token = result.token;
+	user_db.at(argp->c_id).ref_token = result.ref_token;
+	user_db.at(argp->c_id).auth_token = unsigned_tk;
+	user_db.at(argp->c_id).token_ttl = result.token_ttl;
+
+	cout << "  AccessToken = " << result.token << endl
+	     << "  RefreshToken = " << result.ref_token << endl;
 	return &result;
 }
 
@@ -219,10 +272,65 @@ server_res_op *validate_delegated_action_1_svc(client_req_op *argp,
 {
 	static server_res_op result;
 	memset(&result, 0, sizeof(server_res_op));
-	/*
-	 * insert server code here
-	 */
-    
-    result.status = status_code::OK;
+
+	// Check if access token is valid
+	if (access_token_db.count(argp->c_access_token)) {
+		// Check user associated with this token
+		string user_id = access_token_db.at(argp->c_access_token);
+		if (!user_db.count(user_id)) {
+			result.status = status_code::PERMISSION_DENIED;
+			return &result;
+		}
+		// Check that token actually matches with user's current active
+		// token
+		user u = user_db.at(user_id);
+		if (u.acc_token != string(argp->c_access_token)) {
+			result.status = status_code::PERMISSION_DENIED;
+			return &result;
+		}
+		// Check token ttl
+		if (u.token_ttl == 0) {
+			result.status = status_code::TOKEN_EXPIRED;
+			return &result;
+		} else {
+			// Decrement token lifetime
+			user_db.at(user_id).token_ttl--;
+		}
+		// Check if resource exists
+		if (!resource_db.count(argp->resource)) {
+			result.status = status_code::RESOURCE_NOT_FOUND;
+			return &result;
+		}
+		// Check if user has permissions
+		string user_auth_tk = user_db.at(user_id).auth_token;
+
+		auto res_perms_map = token_db.at(user_auth_tk).perms;
+		if (!res_perms_map.count(argp->resource)) {
+			result.status = status_code::OPERATION_NOT_PERMITTED;
+			return &result;
+		}
+
+		unsigned char perms = res_perms_map.at(argp->resource);
+
+		// Get requested operation
+		unsigned char req_op_perm;
+		string req_op_str(argp->op);
+		if (req_op_str == "READ")
+			req_op_perm = perm_flag::READ;
+		if (req_op_str == "MODIFY")
+			req_op_perm = perm_flag::MODIFY;
+		if (req_op_str == "INSERT")
+			req_op_perm = perm_flag::INSERT;
+		if (req_op_str == "DELETE")
+			req_op_perm = perm_flag::DELETE;
+		if (req_op_str == "EXECUTE")
+			req_op_perm = perm_flag::EXECUTE;
+		if (!(req_op_perm & perms)) {
+			result.status = status_code::OPERATION_NOT_PERMITTED;
+			return &result;
+		}
+	}
+
+	result.status = status_code::PERMISSION_GRANTED;
 	return &result;
 }

@@ -11,6 +11,7 @@
 #include <sstream>
 #include <string>
 
+using namespace std;
 enum status_code {
 	OK,
 	USER_NOT_FOUND,
@@ -22,40 +23,48 @@ enum status_code {
 	PERMISSION_GRANTED
 };
 
-std::string status_code_str[] = {
+string status_code_str[] = {
     "SUCCESS",		 "USER_NOT_FOUND",	    "REQUEST_DENIED",
     "TOKEN_EXPIRED",	 "OPERATION_NOT_PERMITTED", "RESOURCE_NOT_FOUND",
     "PERMISSION_DENIED", "PERMISSION_GRANTED"};
 
 struct token_cl {
 	int ttl;
-	std::string token_request;
-	std::string token_access;
-	std::string token_refresh;
+	string token_request;
+	string token_access;
+	string token_refresh;
 };
 
-std::map<std::string, token_cl> user_db;
-std::string curr_token;
+map<string, token_cl> user_db;
+string curr_token;
 int curr_token_ttl;
-std::string input_file;
+string input_file;
 
 CLIENT *clnt;
 
-void bearer_authorization(std::string user_id, int arg)
+void bearer_authorization(string user_id, int arg, int automatic)
 {
 	server_res_token *res;
 	// Populate request body
 	client_req_bearer_token req;
+
 	req.c_auth_token = (char *)user_db.at(user_id).token_request.c_str();
-	req.c_refresh_token = (char *)user_db.at(user_id).token_refresh.c_str();
+	req.c_id = (char *)user_id.c_str();
+	// Check if this bearer request has been triggered by automatic refresh
+	if (automatic) {
+		req.c_refresh_token =
+		    (char *)user_db.at(user_id).token_refresh.c_str();
+
+	} else {
+		req.c_refresh_token = "N/A";
+	}
 
 	// Send request
-
 	if (arg) {
-		// std::cout << "Send signed req_tk get acc_tk, ref_tk\n";
+		// cout << "Send signed req_tk get acc_tk, ref_tk\n";
 		res = req_bearer_token_refresh_1(&req, clnt);
 	} else {
-		// std::cout << "Send signed req_tk get acc_tk\n";
+		// cout << "Send signed req_tk get acc_tk\n";
 		res = req_bearer_token_1(&req, clnt);
 	}
 
@@ -63,7 +72,7 @@ void bearer_authorization(std::string user_id, int arg)
 		printf("%d :", __LINE__);
 		clnt_perror(clnt, "call failed");
 	} else if (res->status != status_code::OK) {
-		std::cout << status_code_str[res->status] << std::endl;
+		cout << status_code_str[res->status] << endl;
 		return;
 	} else {
 		user_db.at(user_id).ttl = res->token_ttl;
@@ -73,13 +82,13 @@ void bearer_authorization(std::string user_id, int arg)
 	}
 }
 
-void authorization(std::string user_id, int arg)
+void authorization(string user_id, int arg)
 {
 	server_res_token *res;
 	// Get initial request token
 	client_req_auth req;
 	req.c_id = (char *)user_id.c_str();
-	// std::cout << "Send cid get req_tk\n";
+	// cout << "Send cid get req_tk\n";
 	res = req_auth_1(&req, clnt);
 
 	// Error checking
@@ -87,14 +96,14 @@ void authorization(std::string user_id, int arg)
 		printf("%d :", __LINE__);
 		clnt_perror(clnt, "call failed");
 	} else if (res->status != status_code::OK) {
-		std::cout << status_code_str[res->status] << std::endl;
+		cout << status_code_str[res->status] << endl;
 		return;
 	}
 
 	// Get signed request token
 	client_req_signature req_approve;
 	req_approve.request_token = res->token;
-	// std::cout << "Send reqtk get signed reqtk\n";
+	// cout << "Send reqtk get signed reqtk\n";
 	res = approve_req_token_1(&req_approve, clnt);
 	if (res == (server_res_token *)NULL) {
 		printf("%d :", __LINE__);
@@ -102,35 +111,46 @@ void authorization(std::string user_id, int arg)
 	}
 	// Check if permissions were granted
 	if (res->status != status_code::OK) {
-		std::cout << status_code_str[res->status] << std::endl;
+		cout << status_code_str[res->status] << endl;
 		return;
 	} else {
 		user_db.at(user_id).token_request = res->token;
 	}
 
 	// Get access token
-	bearer_authorization(user_id, arg);
+	bearer_authorization(user_id, arg, 0);
 
-	std::cout << user_db.at(user_id).token_request.substr(0, 15) << " -> "
-		  << user_db.at(user_id).token_access;
+	cout << user_db.at(user_id).token_request.substr(0, 15) << " -> "
+	     << user_db.at(user_id).token_access;
 
 	if (arg)
-		std::cout << "," << user_db.at(user_id).token_refresh;
+		cout << "," << user_db.at(user_id).token_refresh;
 
-	std::cout << std::endl;
+	cout << endl;
 }
 
-void execute_resource_op(std::string user_id, std::string op_type,
-			 std::string arg)
+void execute_resource_op(string user_id, string op_type, string arg)
 {
-	std::cout << "Res op\n";
 	server_res_op *res;
-	client_req_op validate_delegated_action_1_arg;
+	client_req_op req;
 
-	res =
-	    validate_delegated_action_1(&validate_delegated_action_1_arg, clnt);
+	req.c_access_token = (char *)user_db.at(user_id).token_access.c_str();
+	req.op = (char *)op_type.c_str();
+	req.resource = (char *)arg.c_str();
+
+	// Check for presence of refresh token and if an automatic refresh
+	// is possible
+	if (user_db.at(user_id).ttl == 0 &&
+	    user_db.at(user_id).token_refresh != "N/A") {
+		// Get new access token
+		bearer_authorization(user_id, 1, 1);
+	}
+	res = validate_delegated_action_1(&req, clnt);
 	if (res == (server_res_op *)NULL) {
 		clnt_perror(clnt, "call failed");
+	} else {
+		cout << status_code_str[res->status] << endl;
+		user_db.at(user_id).ttl--;
 	}
 }
 
@@ -143,19 +163,19 @@ void sprc_hw_1(char *host)
 		exit(1);
 	}
 
-	std::ifstream req_file(input_file);
+	ifstream req_file(input_file);
 
 	// Process all requests in file
-	std::string in_line;
+	string in_line;
 	while (req_file >> in_line) {
-		std::stringstream s(in_line);
-		std::string user_id, operation_type, operation_arg;
+		stringstream s(in_line);
+		string user_id, operation_type, operation_arg;
 		getline(s, user_id, ',');
 		getline(s, operation_type, ',');
 		getline(s, operation_arg, ',');
 
-		std::cout << user_id << " " << operation_type << " "
-			  << operation_arg << std::endl;
+		// cout << user_id << " " << operation_type << " " << operation_arg
+		//      << endl;
 
 		// Check if user exists in users db
 		if (!user_db.count(user_id)) {
@@ -165,16 +185,16 @@ void sprc_hw_1(char *host)
 			new_token.token_refresh = "N/A";
 			new_token.token_request = "N/A";
 
-			user_db.insert(std::pair<std::string, token_cl>(
-			    user_id, new_token));
+			user_db.insert(
+			    pair<string, token_cl>(user_id, new_token));
 		}
 
 		// Check operation type
 		if (operation_type == "REQUEST") {
 			authorization(user_id, atoi(operation_arg.c_str()));
 		} else {
-			// execute_resource_op(user_id, operation_type,
-			// 		    operation_arg);
+			execute_resource_op(user_id, operation_type,
+					    operation_arg);
 		}
 	}
 	req_file.close();

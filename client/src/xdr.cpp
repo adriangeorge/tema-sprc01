@@ -5,68 +5,78 @@
 
 #include "interface.h"
 
-bool_t xdr_client_req_auth(XDR *xdrs, client_req_auth *objp)
+bool_t
+xdr_client_req_auth (XDR *xdrs, client_req_auth *objp)
 {
 	register int32_t *buf;
 
-	if (!xdr_string(xdrs, &objp->c_id, ~0))
-		return FALSE;
+	 if (!xdr_string (xdrs, &objp->c_id, ~0))
+		 return FALSE;
 	return TRUE;
 }
 
-bool_t xdr_client_req_signature(XDR *xdrs, client_req_signature *objp)
+bool_t
+xdr_client_req_signature (XDR *xdrs, client_req_signature *objp)
 {
 	register int32_t *buf;
 
-	if (!xdr_string(xdrs, &objp->request_token, ~0))
-		return FALSE;
+	 if (!xdr_string (xdrs, &objp->request_token, ~0))
+		 return FALSE;
 	return TRUE;
 }
 
-bool_t xdr_client_req_bearer_token(XDR *xdrs, client_req_bearer_token *objp)
+bool_t
+xdr_client_req_bearer_token (XDR *xdrs, client_req_bearer_token *objp)
 {
 	register int32_t *buf;
 
-	if (!xdr_string(xdrs, &objp->c_auth_token, ~0))
-		return FALSE;
-	if (!xdr_string(xdrs, &objp->c_refresh_token, ~0))
-		return FALSE;
+	 if (!xdr_string (xdrs, &objp->c_id, ~0))
+		 return FALSE;
+	 if (!xdr_string (xdrs, &objp->c_auth_token, ~0))
+		 return FALSE;
+	 if (!xdr_string (xdrs, &objp->c_refresh_token, ~0))
+		 return FALSE;
 	return TRUE;
 }
 
-bool_t xdr_client_req_op(XDR *xdrs, client_req_op *objp)
+bool_t
+xdr_client_req_op (XDR *xdrs, client_req_op *objp)
 {
 	register int32_t *buf;
 
-	if (!xdr_string(xdrs, &objp->c_access_token, ~0))
-		return FALSE;
-	if (!xdr_string(xdrs, &objp->op, ~0))
-		return FALSE;
-	if (!xdr_string(xdrs, &objp->resource, ~0))
-		return FALSE;
+	 if (!xdr_string (xdrs, &objp->c_id, ~0))
+		 return FALSE;
+	 if (!xdr_string (xdrs, &objp->c_access_token, ~0))
+		 return FALSE;
+	 if (!xdr_string (xdrs, &objp->op, ~0))
+		 return FALSE;
+	 if (!xdr_string (xdrs, &objp->resource, ~0))
+		 return FALSE;
 	return TRUE;
 }
 
-bool_t xdr_server_res_token(XDR *xdrs, server_res_token *objp)
+bool_t
+xdr_server_res_token (XDR *xdrs, server_res_token *objp)
 {
 	register int32_t *buf;
 
-	if (!xdr_int(xdrs, &objp->status))
-		return FALSE;
-	if (!xdr_int(xdrs, &objp->token_ttl))
-		return FALSE;
-	if (!xdr_string(xdrs, &objp->token, ~0))
-		return FALSE;
-	if (!xdr_string(xdrs, &objp->ref_token, ~0))
-		return FALSE;
+	 if (!xdr_int (xdrs, &objp->status))
+		 return FALSE;
+	 if (!xdr_int (xdrs, &objp->token_ttl))
+		 return FALSE;
+	 if (!xdr_string (xdrs, &objp->token, ~0))
+		 return FALSE;
+	 if (!xdr_string (xdrs, &objp->ref_token, ~0))
+		 return FALSE;
 	return TRUE;
 }
 
-bool_t xdr_server_res_op(XDR *xdrs, server_res_op *objp)
+bool_t
+xdr_server_res_op (XDR *xdrs, server_res_op *objp)
 {
 	register int32_t *buf;
 
-	if (!xdr_string(xdrs, &objp->status, ~0))
-		return FALSE;
+	 if (!xdr_int (xdrs, &objp->status))
+		 return FALSE;
 	return TRUE;
 }

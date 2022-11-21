@@ -32,6 +32,7 @@ client_req_bearer_token
 -----------------------------------------------------------------------------
 */
 struct client_req_bearer_token {
+    string c_id<>;
     string c_auth_token<>;
     string c_refresh_token<>;
 };
@@ -46,6 +47,7 @@ client_req_op
 -----------------------------------------------------------------------------
 */
 struct client_req_op {
+    string c_id<>;
     string c_access_token<>;
     string op<>;
     string resource<>;
@@ -92,7 +94,7 @@ server_res_op
 -----------------------------------------------------------------------------
 */
 struct server_res_op {
-    string status<>;
+    int status;
 };
 
 program SPRC_HW {

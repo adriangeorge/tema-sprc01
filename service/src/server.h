@@ -26,11 +26,14 @@ enum status_code {
 };
 // Database structures
 struct user {
-	std::string curr_token;
+	std::string acc_token;
+	std::string auth_token;
+	std::string ref_token;
 	int token_ttl;
 };
 
 struct token {
+	std::string user_id;
 	// Key      : Resource Name
 	// Value    : Encoded permissions for resource
 	std::map<std::string, unsigned char> perms;
@@ -45,7 +48,10 @@ extern void server_init(std::string client_f, std::string resource_f,
 // Key      : User_ID
 // Value    : User structure containing information about token
 extern std::map<std::string, user> user_db;
-// Key      : Token
+// Key      : Access Token
+// Value    : User Id
+extern std::map<std::string, std::string> access_token_db;
+// Key      : Auth Token
 // Value    : Token Permissions Information
 extern std::map<std::string, token> token_db;
 // Set of available resources
