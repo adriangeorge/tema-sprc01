@@ -84,6 +84,7 @@ void bearer_authorization(string user_id, int arg, int automatic)
 
 void authorization(string user_id, int arg)
 {
+
 	server_res_token *res;
 	// Get initial request token
 	client_req_auth req;
@@ -91,7 +92,7 @@ void authorization(string user_id, int arg)
 	// cout << "Send cid get req_tk\n";
 	res = req_auth_1(&req, clnt);
 
-	// Error checking
+	//  Error checking
 	if (res == (server_res_token *)NULL) {
 		printf("%d :", __LINE__);
 		clnt_perror(clnt, "call failed");
@@ -100,7 +101,7 @@ void authorization(string user_id, int arg)
 		return;
 	}
 
-	// Get signed request token
+	//  Get signed request token
 	client_req_signature req_approve;
 	req_approve.request_token = res->token;
 	// cout << "Send reqtk get signed reqtk\n";
@@ -137,14 +138,16 @@ void execute_resource_op(string user_id, string op_type, string arg)
 	req.c_access_token = (char *)user_db.at(user_id).token_access.c_str();
 	req.op = (char *)op_type.c_str();
 	req.resource = (char *)arg.c_str();
-
+	req.c_id = (char *)user_id.c_str();
 	// Check for presence of refresh token and if an automatic refresh
 	// is possible
 	if (user_db.at(user_id).ttl == 0 &&
 	    user_db.at(user_id).token_refresh != "N/A") {
 		// Get new access token
+
 		bearer_authorization(user_id, 1, 1);
 	}
+
 	res = validate_delegated_action_1(&req, clnt);
 	if (res == (server_res_op *)NULL) {
 		clnt_perror(clnt, "call failed");
@@ -173,10 +176,6 @@ void sprc_hw_1(char *host)
 		getline(s, user_id, ',');
 		getline(s, operation_type, ',');
 		getline(s, operation_arg, ',');
-
-		// cout << user_id << " " << operation_type << " " << operation_arg
-		//      << endl;
-
 		// Check if user exists in users db
 		if (!user_db.count(user_id)) {
 			token_cl new_token;
@@ -191,8 +190,10 @@ void sprc_hw_1(char *host)
 
 		// Check operation type
 		if (operation_type == "REQUEST") {
+
 			authorization(user_id, atoi(operation_arg.c_str()));
 		} else {
+
 			execute_resource_op(user_id, operation_type,
 					    operation_arg);
 		}

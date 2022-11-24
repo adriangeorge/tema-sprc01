@@ -41,7 +41,7 @@ struct token {
 
 // Function that reads input files and populates databases
 extern void server_init(std::string client_f, std::string resource_f,
-			std::string approval_f, int avail);
+			std::string approval_f, std::string avail_f);
 
 // Databases
 

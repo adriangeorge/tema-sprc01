@@ -38,10 +38,11 @@ char *unsign_tk(char *tk)
 	return ustk;
 }
 void server_init(string client_f, string resource_f, string approval_f,
-		 int avail)
+		 string avail_f)
 {
 	// Set token availabilty
-	token_availability = avail;
+	ifstream availability_file(avail_f);
+	availability_file >> token_availability;
 	// Read and store client info
 	ifstream client_file(client_f);
 
@@ -52,11 +53,6 @@ void server_init(string client_f, string resource_f, string approval_f,
 		user new_user;
 		new_user.acc_token = "N/A";
 		user_db.insert(pair<string, user>(user_id, new_user));
-
-#ifdef __DEBUG__
-		cout << "[UserDB] Inserted " << user_id << " with token "
-		     << user_db.at(user_id).curr_token << endl;
-#endif
 	}
 
 	client_file.close();
@@ -68,19 +64,11 @@ void server_init(string client_f, string resource_f, string approval_f,
 	string res_name;
 	while (resource_file >> res_name) {
 		resource_db.insert(res_name);
-
-#ifdef __DEBUG__
-		cout << "[ResDB] Inserted " << *(resource_db.find(res_name))
-		     << endl;
-#endif
 	}
 
 	resource_file.close();
 
 	// Read and store approval info
-#ifdef __DEBUG__
-	cout << "[PermDB] Begin " << endl;
-#endif
 	ifstream approval_file(approval_f);
 	string app_name;
 	while (approval_file >> app_name) {
@@ -117,17 +105,9 @@ void server_init(string client_f, string resource_f, string approval_f,
 			    pair<string, unsigned char>(csv_res_name, new_perm);
 
 			new_approval.insert(perm_pair);
-#ifdef __DEBUG__
-			cout << "[" << csv_res_name << "] | ["
-			     << to_string(new_approval.at(csv_res_name)) << "]"
-			     << endl;
-#endif
 		}
 		user_approvals.push_back(new_approval);
 	}
-#ifdef __DEBUG__
-	cout << "[PermDB] Finished " << endl;
-#endif
 
 	approval_file.close();
 }
@@ -138,7 +118,7 @@ server_res_token *req_auth_1_svc(client_req_auth *argp, struct svc_req *rqstp)
 
 	memset(&result, 0, sizeof(server_res_token));
 	// Print begin message
-	cout << "BEGIN " << argp->c_id << " AUTHZ" << endl;
+	std::cout << "BEGIN " << argp->c_id << " AUTHZ" << endl;
 
 	// Populate unneeded fields
 	result.ref_token = "N/A";
@@ -154,7 +134,7 @@ server_res_token *req_auth_1_svc(client_req_auth *argp, struct svc_req *rqstp)
 	// f(id_user)
 	result.token = generate_access_token(argp->c_id);
 	result.status = status_code::OK;
-	cout << "  RequestToken = " << result.token << endl;
+	std::cout << "  RequestToken = " << result.token << endl;
 	return &result;
 }
 
@@ -224,7 +204,7 @@ server_res_token *req_bearer_token_1_svc(client_req_bearer_token *argp,
 	user_db.at(argp->c_id).auth_token = unsigned_tk;
 	user_db.at(argp->c_id).token_ttl = result.token_ttl;
 
-	cout << "  AccessToken = " << result.token << endl;
+	std::cout << "  AccessToken = " << result.token << endl;
 	return &result;
 }
 
@@ -236,6 +216,7 @@ server_res_token *req_bearer_token_refresh_1_svc(client_req_bearer_token *argp,
 
 	if (strcmp(argp->c_refresh_token, "N/A") != 0) {
 		// Generate access token based on automatic refesh token
+		std::cout << "BEGIN " << argp->c_id << " AUTHZ REFRESH" << endl;
 		result.token = generate_access_token(argp->c_refresh_token);
 	} else {
 		// Generate access token using signed auth token
@@ -262,8 +243,8 @@ server_res_token *req_bearer_token_refresh_1_svc(client_req_bearer_token *argp,
 	user_db.at(argp->c_id).auth_token = unsigned_tk;
 	user_db.at(argp->c_id).token_ttl = result.token_ttl;
 
-	cout << "  AccessToken = " << result.token << endl
-	     << "  RefreshToken = " << result.ref_token << endl;
+	std::cout << "  AccessToken = " << result.token << endl
+		  << "  RefreshToken = " << result.ref_token << endl;
 	return &result;
 }
 
@@ -272,33 +253,72 @@ server_res_op *validate_delegated_action_1_svc(client_req_op *argp,
 {
 	static server_res_op result;
 	memset(&result, 0, sizeof(server_res_op));
-
+	// String used later to print operation result in server
+	string op_type = argp->op;
+	string req_res = argp->resource;
+	string acc_tok = "";
+	string tok_ttl = "0";
 	// Check if access token is valid
 	if (access_token_db.count(argp->c_access_token)) {
+		// Check if supplied token exists in db
+		if (!access_token_db.count(argp->c_access_token)) {
+
+			result.status = status_code::PERMISSION_DENIED;
+			std::cout << "DENY (" << op_type << "," << req_res
+				  << ","
+				  << ""
+				  << "," << tok_ttl << ")" << endl;
+			return &result;
+		}
 		// Check user associated with this token
 		string user_id = access_token_db.at(argp->c_access_token);
 		if (!user_db.count(user_id)) {
+
 			result.status = status_code::PERMISSION_DENIED;
+			std::cout << "DENY (" << op_type << "," << req_res
+				  << ","
+				  << ""
+				  << "," << tok_ttl << ")" << endl;
 			return &result;
 		}
 		// Check that token actually matches with user's current active
 		// token
 		user u = user_db.at(user_id);
 		if (u.acc_token != string(argp->c_access_token)) {
+
 			result.status = status_code::PERMISSION_DENIED;
+			std::cout << "DENY (" << op_type << "," << req_res
+				  << ","
+				  << ""
+				  << "," << tok_ttl << ")" << endl;
 			return &result;
 		}
+
 		// Check token ttl
+		tok_ttl = to_string(u.token_ttl);
 		if (u.token_ttl == 0) {
+
 			result.status = status_code::TOKEN_EXPIRED;
+			std::cout << "DENY (" << op_type << "," << req_res
+				  << "," << acc_tok << "," << tok_ttl << ")"
+				  << endl;
+			// Remove token from db
+			user_db.at(user_id).acc_token = "";
+
 			return &result;
 		} else {
 			// Decrement token lifetime
 			user_db.at(user_id).token_ttl--;
+			acc_tok = user_db.at(user_id).acc_token;
 		}
+		tok_ttl = to_string(user_db.at(user_id).token_ttl);
 		// Check if resource exists
 		if (!resource_db.count(argp->resource)) {
+
 			result.status = status_code::RESOURCE_NOT_FOUND;
+			std::cout << "DENY (" << op_type << "," << req_res
+				  << "," << acc_tok << "," << tok_ttl << ")"
+				  << endl;
 			return &result;
 		}
 		// Check if user has permissions
@@ -306,7 +326,11 @@ server_res_op *validate_delegated_action_1_svc(client_req_op *argp,
 
 		auto res_perms_map = token_db.at(user_auth_tk).perms;
 		if (!res_perms_map.count(argp->resource)) {
+
 			result.status = status_code::OPERATION_NOT_PERMITTED;
+			std::cout << "DENY (" << op_type << "," << req_res
+				  << "," << acc_tok << "," << tok_ttl << ")"
+				  << endl;
 			return &result;
 		}
 
@@ -326,11 +350,21 @@ server_res_op *validate_delegated_action_1_svc(client_req_op *argp,
 		if (req_op_str == "EXECUTE")
 			req_op_perm = perm_flag::EXECUTE;
 		if (!(req_op_perm & perms)) {
+
 			result.status = status_code::OPERATION_NOT_PERMITTED;
+			std::cout << "DENY (" << op_type << "," << req_res
+				  << "," << acc_tok << "," << tok_ttl << ")"
+				  << endl;
 			return &result;
 		}
+		std::cout << "PERMIT (" << op_type << "," << req_res << ","
+			  << acc_tok << "," << tok_ttl << ")" << endl;
+		result.status = status_code::PERMISSION_GRANTED;
+		return &result;
 	}
-
-	result.status = status_code::PERMISSION_GRANTED;
+	result.status = status_code::PERMISSION_DENIED;
+	std::cout << "DENY (" << op_type << "," << req_res << ","
+		  << ""
+		  << "," << tok_ttl << ")" << endl;
 	return &result;
 }

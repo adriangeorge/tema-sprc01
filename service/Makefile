@@ -1,6 +1,6 @@
 # Compiler flags 
 CCPP = g++
-CXXFLAGS = -g -Wall
+CXXFLAGS = -g
 LDLIBS += -lnsl
 # Parameters
 EXE = server 

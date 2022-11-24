@@ -109,7 +109,9 @@ int main(int argc, char **argv)
 			"unable to register (SPRC_HW, SPRC_HW_VER, udp).");
 		exit(1);
 	}
-	server_init(argv[1], argv[2], argv[3], atoi(argv[4]));
+
+	server_init(argv[1], argv[2], argv[3], argv[4]);
+
 	svc_run();
 	fprintf(stderr, "%s", "svc_run returned");
 	exit(1);

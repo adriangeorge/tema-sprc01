@@ -6,10 +6,8 @@
 # ./check.sh all -> ruleaza toate testele
 #
 # Completati/schimbati urmatoarele valori inainte de utilizare:
-SERVER_NAME=""
-SERVER_PARAMS="tests/test$1/userIDs.db tests/test$1/resources.db tests/test$1/approvals.db"
-CLIENT_NAME=""
-CLIENT_PARAMS="tests/test$1/client.in"
+SERVER_NAME="../service/server"
+CLIENT_NAME="../client/client"
 SERVER_ADDR="localhost"
 
 if [ $# -lt 1 ]; then
@@ -24,8 +22,13 @@ fi
 
 numberPattern='^[0-9]+$'
 if [[ $1 =~ $numberPattern ]]; then
+    SERVER_PARAMS="tests/test$1/userIDs.db tests/test$1/resources.db tests/test$1/approvals.db tests/test$1/token_ttl"
+    CLIENT_PARAMS="tests/test$1/client.in"
+    echo $SERVER_NAME $SERVER_PARAMS
+    echo $CLIENT_NAME $SERVER_ADDR $CLIENT_PARAMS
     ./$SERVER_NAME $SERVER_PARAMS > server.out &
     SERVER_PID=$!
+    sleep 1
     ./$CLIENT_NAME $SERVER_ADDR $CLIENT_PARAMS > client.out
     kill $SERVER_PID
 
@@ -62,8 +65,11 @@ if [[ $1 =~ $numberPattern ]]; then
 else
     for i in {1..7}
     do
+        SERVER_PARAMS="tests/test$i/userIDs.db tests/test$i/resources.db tests/test$i/approvals.db tests/test$i/token_ttl"
+        CLIENT_PARAMS="tests/test$i/client.in"
         ./$SERVER_NAME $SERVER_PARAMS > server.out &
         SERVER_PID=$!
+        sleep 1
         ./$CLIENT_NAME $SERVER_ADDR $CLIENT_PARAMS > client.out
         kill $SERVER_PID
 
